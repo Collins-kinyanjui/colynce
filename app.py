@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from openai import AsyncOpenAI
+from gemini_client import generate_reply
 from pydantic import BaseModel, EmailStr, Field
 
 ROOT = Path(__file__).resolve().parent
@@ -22,6 +23,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./peachflow.db")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 if PROD and (not SESSION_SECRET or not ADMIN_PASSWORD or not DATABASE_URL.startswith(("postgres://", "postgresql://"))):
@@ -137,7 +139,7 @@ def fallback(text):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "ai_configured": bool(OPENAI_API_KEY)}
+    return {"status": "ok", "ai_configured": bool(GEMINI_API_KEY or OPENAI_API_KEY)}
 
 @app.post("/api/leads", status_code=201)
 def add_lead(body: Lead, request: Request):
@@ -156,7 +158,13 @@ async def chat(body: Chat, request: Request):
     origin_check(request)
     reply = fallback(body.message)
     mode = "faq"
-    if OPENAI_API_KEY:
+    if GEMINI_API_KEY:
+        try:
+            reply = await generate_reply(body.message, body.history, CATALOG)
+            mode = "gemini"
+        except Exception:
+            mode = "fallback"
+    elif OPENAI_API_KEY:
         try:
             conversation = []
             for x in body.history[-8:]:
