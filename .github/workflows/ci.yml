@@ -12,4 +12,4 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt pytest httpx
       - run: python -m compileall -q app.py
-      - run: pytest -q
+      - run: python -m pytest -q
