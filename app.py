@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 import os
 import secrets
 import sqlite3
@@ -10,13 +11,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from openai import AsyncOpenAI
 from gemini_client import generate_reply
+from email_notifications import send_lead_notice
 from pydantic import BaseModel, EmailStr, Field
 
+logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent
 PROD = os.getenv("APP_ENV", "development").lower() == "production"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./peachflow.db")
@@ -142,7 +145,7 @@ def health():
     return {"status": "ok", "ai_configured": bool(GEMINI_API_KEY or OPENAI_API_KEY)}
 
 @app.post("/api/leads", status_code=201)
-def add_lead(body: Lead, request: Request):
+def add_lead(body: Lead, request: Request, background_tasks: BackgroundTasks):
     throttle(request, "leads", 5)
     origin_check(request)
     lead_id = secrets.token_hex(12)
@@ -150,6 +153,9 @@ def add_lead(body: Lead, request: Request):
         execute(conn, "INSERT INTO leads(id,name,business,email,interest,message,status,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
             (lead_id, body.name.strip(), body.business.strip(), str(body.email), body.interest.strip(),
              body.message.strip(), "New", "", stamp()))
+    background_tasks.add_task(send_lead_notice, {"name": body.name.strip(), "business": body.business.strip(),
+        "email": str(body.email), "interest": body.interest.strip(), "message": body.message.strip(),
+        "reference": lead_id})
     return {"received": True, "reference": lead_id}
 
 @app.post("/api/chat")
@@ -163,6 +169,7 @@ async def chat(body: Chat, request: Request):
             reply = await generate_reply(body.message, body.history, CATALOG)
             mode = "gemini"
         except Exception:
+            logger.exception("Gemini chatbot generation failed")
             mode = "fallback"
     elif OPENAI_API_KEY:
         try:
@@ -177,10 +184,14 @@ async def chat(body: Chat, request: Request):
             reply = result.choices[0].message.content or reply
             mode = "ai"
         except Exception:
+            logger.exception("Chatbot generation failed")
             mode = "fallback"
-    with dbconn() as conn:
-        execute(conn, "INSERT INTO chats(id,message,reply,mode,created_at) VALUES (?,?,?,?,?)",
-            (secrets.token_hex(12), body.message, reply, mode, stamp()))
+    try:
+        with dbconn() as conn:
+            execute(conn, "INSERT INTO chats(id,message,reply,mode,created_at) VALUES (?,?,?,?,?)",
+                (secrets.token_hex(12), body.message, reply, mode, stamp()))
+    except Exception:
+        logger.exception("Chat log persistence failed; continuing to serve chatbot response")
     return {"reply": reply, "mode": mode}
 
 @app.post("/api/admin/login")
