@@ -7,6 +7,8 @@ os.environ["ADMIN_PASSWORD"] = "test-admin-password"
 os.environ["SESSION_SECRET"] = "test-secret-not-for-production"
 os.environ["DATABASE_URL"] = "sqlite:///./test_peachflow.db"
 os.environ.pop("OPENAI_API_KEY", None)
+os.environ.pop("GEMINI_API_KEY", None)
+os.environ.pop("RESEND_API_KEY", None)
 app = importlib.import_module("app")
 client = TestClient(app.app)
 
@@ -50,3 +52,31 @@ def test_gemini_mode_without_external_request(monkeypatch):
     assert response.status_code == 200
     assert response.json()["mode"] == "gemini"
     assert "business automation" in response.json()["reply"]
+
+def test_email_delivery_is_queued_without_public_credentials(monkeypatch):
+    captured = []
+    async def send_notice(lead):
+        captured.append(lead)
+    monkeypatch.setattr(app, "send_lead_notice", send_notice)
+    result = client.post("/api/leads", json={
+        "name": "Morgan Lee", "business": "Maple Home Services",
+        "email": "morgan@example.com", "interest": "Launch Website",
+        "message": "Please contact me about a website."
+    })
+    assert result.status_code == 201
+    assert captured and captured[0]["email"] == "morgan@example.com"
+    assert captured[0]["reference"] == result.json()["reference"]
+
+def test_chat_response_survives_logging_database_failure(monkeypatch):
+    original = app.dbconn
+    from contextlib import contextmanager
+    @contextmanager
+    def failing_db():
+        raise RuntimeError("temporary database outage")
+        yield
+    monkeypatch.setattr(app, "dbconn", failing_db)
+    monkeypatch.setattr(app, "GEMINI_API_KEY", "")
+    response = client.post("/api/chat", json={"message": "What does the website cost?", "history": []})
+    assert response.status_code == 200
+    assert response.json()["mode"] == "faq"
+    monkeypatch.setattr(app, "dbconn", original)
