@@ -39,3 +39,14 @@ def test_chat_faq():
     assert r.status_code == 200
     assert "$199" in r.json()["reply"]
     assert r.json()["mode"] == "faq"
+
+def test_gemini_mode_without_external_request(monkeypatch):
+    async def fake_gemini(message, history, instructions):
+        assert message == "Tell me about your services"
+        return "We offer websites and business automation."
+    monkeypatch.setattr(app, "GEMINI_API_KEY", "test-only-configured")
+    monkeypatch.setattr(app, "generate_reply", fake_gemini)
+    response = client.post("/api/chat", json={"message": "Tell me about your services", "history": []})
+    assert response.status_code == 200
+    assert response.json()["mode"] == "gemini"
+    assert "business automation" in response.json()["reply"]
