@@ -46,3 +46,13 @@ Then visit http://localhost:8000 and http://localhost:8000/admin .
 
 ## Services and introductory USD pricing
 Launch Website: $199 setup + $19/month; Growth Automation: $399 setup + $49/month; Integration Pro: from $899 setup + $99/month. AI chat setup from $99; additional integrations from $99; reputation management from $29/month; SEO/content from $79/month; custom dashboards from $149 setup; AI lead acquisition from $49/month; AI support from $29/month; unified operations dashboards from $49/month. Scope/usage constraints apply.
+
+## Email notifications for new leads
+Consultation requests are stored in the database first; then an email is sent in a background task via Resend. Set `RESEND_API_KEY`, `EMAIL_FROM` (e.g. `PeachFlow <hello@your-verified-domain.example>`), and `NOTIFY_EMAIL` to the private destination address in the Render dashboard. Verify your sender domain in Resend before sending to arbitrary inboxes. Do not commit keys or private contact addresses to GitHub. Failed email notifications are logged, and leads stay accessible at `/admin`. There is no automatic retry queue in this MVP; use admin as the source of truth.
+
+## Troubleshooting chatbot
+- `GET /api/health` displays whether an AI credential was configured, but cannot verify validity.
+- If Gemini fails, the app logs a server-side exception and responds with pricing/FAQ fallback.
+- If saving a chat log fails, a valid chatbot answer is still returned instead of a 500 error.
+- Verify `GEMINI_API_KEY`, Gemini model availability/quota, and `DATABASE_URL` in Render. Never paste secrets into public logs.
+- `PUBLIC_URL` must exactly match the scheme and hostname of the public website, without a trailing slash; mismatch can reject POST requests.
