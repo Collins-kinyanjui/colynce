@@ -23,3 +23,9 @@ services:
         value: gemini-2.5-flash
       - key: PUBLIC_URL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: NOTIFY_EMAIL
+        sync: false
