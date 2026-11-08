@@ -21,16 +21,16 @@ async def send_lead_notice(lead: dict) -> None:
         "Name": lead["name"], "Business": lead["business"], "Email": lead["email"],
         "Interest": lead["interest"], "Message": lead["message"], "Reference": lead["reference"]
     }
-    html = "<h2>New PeachFlow consultation request</h2>" + "".join(
+    html = "<h2>New COKIT Digital consultation request</h2>" + "".join(
         f"<p><strong>{escape(key)}:</strong> {escape(str(value))}</p>" for key,value in details.items()
-    ) + "<p>Manage leads in your PeachFlow admin dashboard.</p>"
-    text = "New PeachFlow consultation request\n\n" + "\n".join(
+    ) + "<p>Manage leads in your COKIT Digital admin dashboard.</p>"
+    text = "New COKIT Digital consultation request\n\n" + "\n".join(
         f"{key}: {value}" for key,value in details.items()
     )
     body = {
         "from": os.environ["EMAIL_FROM"],
         "to": [os.environ["NOTIFY_EMAIL"]],
-        "subject": "New PeachFlow inquiry: " + lead["interest"][:80],
+        "subject": "New COKIT Digital inquiry: " + lead["interest"][:80],
         "html": html,
         "text": text,
         "reply_to": lead["email"],
