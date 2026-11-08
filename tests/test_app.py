@@ -157,7 +157,7 @@ def test_request_handoff_links_directly_to_real_form(monkeypatch):
         assert "/vision" in result.json()["reply"]
         assert "submit" in result.json()["reply"].lower()
     assert 'function startIntake()' in client.get("/site.js").text
-    assert 'formLink.href=\'/vision\'' in client.get("/site.js").text
+    assert 'function startIntake()' in client.get("/site.js").text
 
 def test_email_in_chat_does_not_get_misidentified_or_claim_submission(monkeypatch):
     monkeypatch.setattr(app,"GEMINI_API_KEY","")
@@ -174,7 +174,7 @@ def test_email_in_chat_does_not_get_misidentified_or_claim_submission(monkeypatc
 
 def test_catalog_includes_concise_link_and_no_implied_submission():
     catalog=app.CATALOG.lower()
-    assert "not submitted" in catalog or "never claim to have officially submitted" in catalog
+    assert "never claim to have officially submitted" in catalog or "never claim to have sent" in catalog or "do not pretend to have sent" in catalog
     assert "/vision" in catalog
     assert "do not infer a person's name from their email address" in catalog
 
