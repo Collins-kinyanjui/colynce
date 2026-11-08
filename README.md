@@ -1,8 +1,9 @@
-# PeachFlow Digital
+# COKIT Digital
 
 A brown, ivory and gold glass-UI digital agency website serving Georgia, USA.
 
 ## Included
+- Three-page COKIT Digital public site with naturally scrolling header and floating AI assistant powered by the existing chat API.
 - Responsive marketing site with affordable service packages and a simulated lead-to-CRM demo.
 - Real website AI chat powered by the Google Gemini API when `GEMINI_API_KEY` is configured (OpenAI is an optional secondary provider) (FAQ fallback otherwise).
 - Consultation form persisted in SQLite locally or PostgreSQL in production.
@@ -48,7 +49,7 @@ Then visit http://localhost:8000 and http://localhost:8000/admin .
 Launch Website: $199 setup + $19/month; Growth Automation: $399 setup + $49/month; Integration Pro: from $899 setup + $99/month. AI chat setup from $99; additional integrations from $99; reputation management from $29/month; SEO/content from $79/month; custom dashboards from $149 setup; AI lead acquisition from $49/month; AI support from $29/month; unified operations dashboards from $49/month. Scope/usage constraints apply.
 
 ## Email notifications for new leads
-Consultation requests are stored in the database first; then an email is sent in a background task via Resend. Set `RESEND_API_KEY`, `EMAIL_FROM` (e.g. `PeachFlow <hello@your-verified-domain.example>`), and `NOTIFY_EMAIL` to the private destination address in the Render dashboard. Verify your sender domain in Resend before sending to arbitrary inboxes. Do not commit keys or private contact addresses to GitHub. Failed email notifications are logged, and leads stay accessible at `/admin`. There is no automatic retry queue in this MVP; use admin as the source of truth.
+Consultation requests are stored in the database first; then an email is sent in a background task via Resend. Set `RESEND_API_KEY`, `EMAIL_FROM` (e.g. `COKIT <hello@your-verified-domain.example>`), and `NOTIFY_EMAIL` to the private destination address in the Render dashboard. Verify your sender domain in Resend before sending to arbitrary inboxes. Do not commit keys or private contact addresses to GitHub. Failed email notifications are logged, and leads stay accessible at `/admin`. There is no automatic retry queue in this MVP; use admin as the source of truth.
 
 ## Troubleshooting chatbot
 - `GET /api/health` displays whether an AI credential was configured, but cannot verify validity.
