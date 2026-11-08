@@ -132,13 +132,63 @@ class LeadUpdate(BaseModel):
 
 CATALOG = """You are COKIT Digital's helpful, concise customer assistant. You serve Georgia, USA businesses remotely. Answer accurately; do not invent guarantees, contact details or completed integrations. Prices in USD are introductory estimates, third-party/AI/hosting fees additional. Launch Website $199 setup + $19/mo (up to 3 pages, forms, basic SEO, analytics). Growth Automation $399 setup + $49/mo (lead capture, CRM, scheduling, one automated workflow, review requests). Integration Pro from $899 setup + $99/mo (two supported integrations and two workflows). AI chatbot $99-$249 setup, usage extra; additional app integration $99-$299; reputation management $29-$59/mo; SEO/content $79-$199/mo; custom dashboard $149-$399 setup. Other services: AI customer acquisition from $49/mo, customer support from $29/mo, unified operations dashboard from $49/mo, CRM, appointment booking, automated reviews, inventory/accounting integrations and marketing. Invite clients to submit a consultation request, never request payment credentials, and do not promise an exact turnaround or savings."""
 
-def fallback(text):
-    t = text.lower()
-    if any(x in t for x in ("price", "cost", "how much", "package")):
-        return "Our Launch Website is $199 setup + $19/month, Growth Automation $399 + $49/month, and Integration Pro from $899 + $99/month. Third-party fees are additional. Which package interests you?"
-    if any(x in t for x in ("chat", "assistant", "ai")):
-        return "We build AI chatbots starting at $99 setup, with usage billed separately. Tell me what your business needs."
-    return "Welcome to COKIT Digital! We offer affordable websites, AI chatbots, CRM automation, integrations, SEO, and dashboards. What would you like to improve?"
+def fallback(text, history=None):
+    """Topic-aware, non-generative assistance when the AI provider is unavailable."""
+    import re
+    history = history or []
+    message = text.lower().strip()
+    context = " ".join(
+        str(turn.get("content", ""))[:300].lower()
+        for turn in history[-4:] if isinstance(turn, dict) and turn.get("role") == "user"
+    )
+    topics = {
+        "dashboard": ("dashboard", "dashboards", "analytics", "reporting", "reports", "kpi", "metrics", "insights"),
+        "automation": ("automate", "automation", "workflow", "follow-up", "reminder", "repetitive", "scheduling", "appointment"),
+        "website": ("website", "web design", "webpage", "site", "landing page", "ecommerce", "online store"),
+        "integration": ("integration", "integrate", "connect", "crm", "api", "sync", "inventory", "accounting"),
+        "chatbot": ("chatbot", "chat bot", "ai assistant", "customer support bot", "virtual agent"),
+        "marketing": ("seo", "marketing", "review", "reputation", "traffic", "leads", "customers")
+    }
+    def matches(words, content):
+        return any(re.search(r"(?<![a-z])" + re.escape(word) + r"(?![a-z])", content) for word in words)
+    topic = next((name for name, words in topics.items() if matches(words, message)), None)
+    if topic is None and matches(("yes", "sure", "okay", "ok", "tell me more", "how", "what", "cost", "price", "much", "it"), message):
+        topic = next((name for name, words in topics.items() if matches(words, context)), None)
+    answers = {
+        "dashboard": ("Absolutely — COKIT Digital builds custom dashboards to bring your most useful numbers into one place. "
+                      "We can track leads, sales, booking activity, operations, or marketing KPIs, depending on which systems you use. "
+                      "Custom dashboard setup typically starts at $149–$399, with final pricing based on integrations and scope. "
+                      "What would you like your dashboard to track, and where is that data stored?"),
+        "automation": ("We can automate lead capture, CRM updates, appointment scheduling, reminders, customer follow-ups and review requests. "
+                       "Our Growth Automation package starts at $399 setup plus $49/month for a scoped workflow; third-party costs are extra. "
+                       "Which task does your team repeat most often?"),
+        "website": ("We design responsive websites that help visitors understand your business and contact you. "
+                    "Our Launch Website package starts at $199 setup plus $19/month for up to three pages, forms, SEO basics and analytics. "
+                    "Is this a new website or a redesign, and what type of business is it for?"),
+        "integration": ("We connect business tools so information can move between them without repeated manual entry. "
+                        "Examples include CRM, appointments, inventory, accounting and reporting. "
+                        "Integration Pro starts from $899 setup plus $99/month for two supported connections and workflows. "
+                        "Which platforms do you need connected?"),
+        "chatbot": ("We can build a customer-facing AI chat assistant to answer common questions, capture inquiries and direct complex requests to your team. "
+                    "Initial setup is typically $99–$249; AI usage is additional. "
+                    "Would it be for customer support, leads, bookings, or something else?"),
+        "marketing": ("We help businesses improve online visibility and customer trust through SEO support, review workflows and smarter lead follow-up. "
+                      "Reputation services start at $29–$59/month, with separate SEO or content options. "
+                      "Is your main goal more traffic, more inquiries, or better reviews?")
+    }
+    if topic:
+        if matches(("price", "cost", "how much", "monthly", "quote", "rate"), message):
+            return answers[topic]
+        return answers[topic]
+    if matches(("price", "cost", "how much", "package", "rates"), message):
+        return ("Our Launch Website starts at $199 setup + $19/month, Growth Automation at $399 + $49/month, "
+                "and Integration Pro from $899 + $99/month. Custom dashboards start at $149–$399 setup. "
+                "Third-party and AI usage fees are additional. Which service would you like a quote for?")
+    if matches(("hello", "hey", "hi", "good morning", "good evening"), message):
+        return "Hello! I can help you with websites, automation, dashboards, integrations and AI assistants. What are you looking to build?"
+    return ("I can help you explore COKIT Digital services. Tell me a little more about your goal — "
+            "for example, 'I need a sales dashboard' or 'I want to automate customer follow-ups'. "
+            "You can also submit your requirements at /vision to request a tailored consultation.")
 
 @app.get("/api/health")
 def health():
@@ -162,7 +212,7 @@ def add_lead(body: Lead, request: Request, background_tasks: BackgroundTasks):
 async def chat(body: Chat, request: Request):
     throttle(request, "chat", 12)
     origin_check(request)
-    reply = fallback(body.message)
+    reply = fallback(body.message, body.history)
     mode = "faq"
     if GEMINI_API_KEY:
         try:
