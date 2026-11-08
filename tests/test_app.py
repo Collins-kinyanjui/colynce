@@ -95,3 +95,23 @@ def test_three_page_navigation_and_assets():
     assert client.get("/site.css").status_code==200
     assert client.get("/site.js").status_code==200
     assert "prefers-reduced-motion" in client.get("/site.css").text
+
+def test_cokit_branding_scrolling_header_and_restored_assistant():
+    for route in ("/","/services","/vision"):
+        response=client.get(route)
+        assert response.status_code==200
+        assert "COKIT Digital" in response.text
+        assert "Peachflow Digital" not in response.text
+    assert "COKIT" in client.get("/admin").text
+    css=client.get("/site.css")
+    assert css.status_code==200
+    assert ".site-nav{position:relative" in css.text
+    assert ".site-nav{position:sticky" not in css.text
+    assert ".assistant-pane" in css.text
+    js=client.get("/site.js")
+    assert js.status_code==200
+    assert "COKIT AI Assistant" in js.text
+    assert "fetch('/api/chat'" in js.text
+    result=client.post("/api/chat",json={"message":"What services do you offer?","history":[]})
+    assert result.status_code==200
+    assert result.json().get("reply")
