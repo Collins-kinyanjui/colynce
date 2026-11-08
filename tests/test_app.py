@@ -177,3 +177,35 @@ def test_catalog_includes_concise_link_and_no_implied_submission():
     assert "not submitted" in catalog or "never claim to have officially submitted" in catalog
     assert "/vision" in catalog
     assert "do not infer a person's name from their email address" in catalog
+
+def test_chatbot_vision_form_and_dashboard_integration(monkeypatch):
+    """The chat intake uses the same persisted lead endpoint as the standalone form."""
+    script=client.get("/site.js").text
+    for snippet in ("assistantVisionForm","Submit your vision in chat","name=\"name\"",
+                    "name=\"business\"","name=\"email\"","name=\"interest\"",
+                    "name=\"message\"","/api/leads","assistantVisionStatus",
+                    "avConsent","data.reference"):
+        assert snippet in script
+    assert "visionForm.reportValidity()" in script
+    assert "response.ok" in script
+    assert "Request received!" in script
+    assert ".assistant-vision-panel[hidden]{display:none}" in client.get("/site.css").text
+    monkeypatch.setattr(app,"GEMINI_API_KEY","")
+    response=client.post("/api/chat",json={"message":"Where can I submit my request?","history":[]})
+    assert response.status_code==200
+    assert "Submit your vision in chat" in response.json()["reply"]
+    lead=client.post("/api/leads",json={
+        "name":"Alex Test","business":"Hotel Demo Ltd","email":"alex-test@example.com",
+        "interest":"Custom Dashboard",
+        "message":"Build a dashboard for room bookings, sales, occupancy and payments."})
+    assert lead.status_code==201,lead.text
+    ref=lead.json()["reference"]
+    assert ref
+    login=client.post("/api/admin/login",json={"password":"test-admin-password"})
+    assert login.status_code==200
+    overview=client.get("/api/admin/overview")
+    assert overview.status_code==200
+    found=[item for item in overview.json()["leads"] if item["id"]==ref]
+    assert found and found[0]["business"]=="Hotel Demo Ltd"
+    assert "occupancy" in found[0]["message"]
+    assert found[0]["status"]=="New"
