@@ -115,3 +115,32 @@ def test_cokit_branding_scrolling_header_and_restored_assistant():
     result=client.post("/api/chat",json={"message":"What services do you offer?","history":[]})
     assert result.status_code==200
     assert result.json().get("reply")
+
+def test_fallback_handles_dashboard_topic_and_followups(monkeypatch):
+    monkeypatch.setattr(app, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(app, "OPENAI_API_KEY", "")
+    first=client.post("/api/chat",json={"message":"dashboard","history":[]})
+    assert first.status_code==200
+    assert first.json()["mode"]=="faq"
+    assert "dashboard" in first.json()["reply"].lower()
+    assert "track" in first.json()["reply"].lower()
+    assert "Welcome to" not in first.json()["reply"]
+    history=[{"role":"user","content":"dashboard"},{"role":"assistant","content":first.json()["reply"]}]
+    follow=client.post("/api/chat",json={"message":"how much does it cost","history":history})
+    assert follow.status_code==200
+    assert "$149" in follow.json()["reply"]
+    workflow=client.post("/api/chat",json={"message":"I need automated reminders","history":[]})
+    assert workflow.status_code==200
+    assert "automation" in workflow.json()["reply"].lower()
+    monkeypatch.undo()
+
+def test_failed_gemini_uses_contextual_fallback(monkeypatch):
+    async def provider_failure(message, history, instructions):
+        raise RuntimeError("Provider unavailable")
+    monkeypatch.setattr(app,"GEMINI_API_KEY","test-provider-key")
+    monkeypatch.setattr(app,"generate_reply",provider_failure)
+    response=client.post("/api/chat",json={"message":"dashboard","history":[]})
+    assert response.status_code==200
+    assert response.json()["mode"]=="fallback"
+    assert "dashboard" in response.json()["reply"].lower()
+    assert "Welcome to" not in response.json()["reply"]
