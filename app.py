@@ -143,7 +143,7 @@ def fallback(text, history=None):
     )
     topics = {
         "dashboard": ("dashboard", "dashboards", "analytics", "reporting", "reports", "kpi", "metrics", "insights"),
-        "automation": ("automate", "automation", "workflow", "follow-up", "reminder", "repetitive", "scheduling", "appointment"),
+        "automation": ("automate", "automated", "automation", "workflow", "follow-up", "reminder", "reminders", "repetitive", "scheduling", "appointment"),
         "website": ("website", "web design", "webpage", "site", "landing page", "ecommerce", "online store"),
         "integration": ("integration", "integrate", "connect", "crm", "api", "sync", "inventory", "accounting"),
         "chatbot": ("chatbot", "chat bot", "ai assistant", "customer support bot", "virtual agent"),
