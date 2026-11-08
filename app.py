@@ -140,13 +140,13 @@ def handoff_response(message):
     """Deterministic handoff avoids invented lead submissions or contact-name guesses."""
     import re
     m = message.strip().lower()
-    email = re.search(r"(?<![\\w.+-])[a-z0-9_.+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}(?![\\w.-])", m)
+    email = re.search(r"(?<![\w.+-])[a-z0-9_.+\-]+@[a-z0-9.\-]+\.[a-z]{2,}(?![\w.-])", m)
     if email and (len(m) < 180 or any(word in m for word in ("email", "contact", "reach", "address"))):
         return ("Thanks for sharing your email. To make sure your project reaches our team, "
                 "please fill out the Build Your Vision request form at /vision. "
                 "This chat has not submitted your request or registered your email as a lead. "
                 "The form asks for your name, business, email and project details.")
-    if re.search(r"\\b(where|how|link|url|page)\\b.*\\b(submit|request|consultation|form|contact|quote|send|start)\\b", m) or (
+    if re.search(r"\b(where|how|link|url|page)\b.*\b(submit|request|consultation|form|contact|quote|send|start)\b", m) or (
        "submit" in m and any(x in m for x in ("request", "form", "project", "quote"))):
         return ("You can submit your project directly through our Build Your Vision form: "
                 "https://peachflow-digital.onrender.com/vision. "
