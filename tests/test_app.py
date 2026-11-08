@@ -80,3 +80,18 @@ def test_chat_response_survives_logging_database_failure(monkeypatch):
     assert response.status_code == 200
     assert response.json()["mode"] == "faq"
     monkeypatch.setattr(app, "dbconn", original)
+
+def test_three_page_navigation_and_assets():
+    home=client.get("/")
+    services=client.get("/services")
+    vision=client.get("/vision")
+    assert all(response.status_code==200 for response in [home,services,vision])
+    assert "Make your business" in home.text
+    assert "Automation workflow" in home.text
+    assert "Growth Automation" in services.text
+    assert "Build something remarkable." in vision.text
+    assert 'id="visionForm"' in vision.text
+    assert 'name="interest"' in vision.text
+    assert client.get("/site.css").status_code==200
+    assert client.get("/site.js").status_code==200
+    assert "prefers-reduced-motion" in client.get("/site.css").text
