@@ -34,7 +34,7 @@ if PROD and (not SESSION_SECRET or not ADMIN_PASSWORD or not DATABASE_URL.starts
 if not SESSION_SECRET:
     SESSION_SECRET = secrets.token_urlsafe(48)
 serializer = URLSafeTimedSerializer(SESSION_SECRET, salt="peachflow-admin-v1")
-app = FastAPI(title="PeachFlow Digital", docs_url=None, redoc_url=None)
+app = FastAPI(title="COKIT Digital", docs_url=None, redoc_url=None)
 limits = defaultdict(deque)
 
 def using_pg():
@@ -130,7 +130,7 @@ class LeadUpdate(BaseModel):
     status: str
     notes: str = Field(default="", max_length=3000)
 
-CATALOG = """You are PeachFlow Digital's helpful, concise customer assistant. You serve Georgia, USA businesses remotely. Answer accurately; do not invent guarantees, contact details or completed integrations. Prices in USD are introductory estimates, third-party/AI/hosting fees additional. Launch Website $199 setup + $19/mo (up to 3 pages, forms, basic SEO, analytics). Growth Automation $399 setup + $49/mo (lead capture, CRM, scheduling, one automated workflow, review requests). Integration Pro from $899 setup + $99/mo (two supported integrations and two workflows). AI chatbot $99-$249 setup, usage extra; additional app integration $99-$299; reputation management $29-$59/mo; SEO/content $79-$199/mo; custom dashboard $149-$399 setup. Other services: AI customer acquisition from $49/mo, customer support from $29/mo, unified operations dashboard from $49/mo, CRM, appointment booking, automated reviews, inventory/accounting integrations and marketing. Invite clients to submit a consultation request, never request payment credentials, and do not promise an exact turnaround or savings."""
+CATALOG = """You are COKIT Digital's helpful, concise customer assistant. You serve Georgia, USA businesses remotely. Answer accurately; do not invent guarantees, contact details or completed integrations. Prices in USD are introductory estimates, third-party/AI/hosting fees additional. Launch Website $199 setup + $19/mo (up to 3 pages, forms, basic SEO, analytics). Growth Automation $399 setup + $49/mo (lead capture, CRM, scheduling, one automated workflow, review requests). Integration Pro from $899 setup + $99/mo (two supported integrations and two workflows). AI chatbot $99-$249 setup, usage extra; additional app integration $99-$299; reputation management $29-$59/mo; SEO/content $79-$199/mo; custom dashboard $149-$399 setup. Other services: AI customer acquisition from $49/mo, customer support from $29/mo, unified operations dashboard from $49/mo, CRM, appointment booking, automated reviews, inventory/accounting integrations and marketing. Invite clients to submit a consultation request, never request payment credentials, and do not promise an exact turnaround or savings."""
 
 def fallback(text):
     t = text.lower()
@@ -138,7 +138,7 @@ def fallback(text):
         return "Our Launch Website is $199 setup + $19/month, Growth Automation $399 + $49/month, and Integration Pro from $899 + $99/month. Third-party fees are additional. Which package interests you?"
     if any(x in t for x in ("chat", "assistant", "ai")):
         return "We build AI chatbots starting at $99 setup, with usage billed separately. Tell me what your business needs."
-    return "Welcome to PeachFlow Digital! We offer affordable websites, AI chatbots, CRM automation, integrations, SEO, and dashboards. What would you like to improve?"
+    return "Welcome to COKIT Digital! We offer affordable websites, AI chatbots, CRM automation, integrations, SEO, and dashboards. What would you like to improve?"
 
 @app.get("/api/health")
 def health():
