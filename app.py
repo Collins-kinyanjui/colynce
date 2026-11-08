@@ -257,3 +257,21 @@ def homepage():
 @app.get("/admin")
 def admin():
     return FileResponse(ROOT / "admin.html")
+
+@app.get("/services")
+@app.get("/services/")
+def services_page():
+    return FileResponse(ROOT / "services.html")
+
+@app.get("/vision")
+@app.get("/vision/")
+def vision_page():
+    return FileResponse(ROOT / "vision.html")
+
+@app.get("/site.css")
+def site_styles():
+    return FileResponse(ROOT / "site.css", media_type="text/css")
+
+@app.get("/site.js")
+def site_script():
+    return FileResponse(ROOT / "site.js", media_type="application/javascript")
