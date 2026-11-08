@@ -144,3 +144,36 @@ def test_failed_gemini_uses_contextual_fallback(monkeypatch):
     assert response.json()["mode"]=="fallback"
     assert "dashboard" in response.json()["reply"].lower()
     assert "Welcome to" not in response.json()["reply"]
+
+def test_request_handoff_links_directly_to_real_form(monkeypatch):
+    async def no_provider(*args):
+        raise AssertionError("Direct handoff must not depend on provider")
+    monkeypatch.setattr(app,"GEMINI_API_KEY","test-key")
+    monkeypatch.setattr(app,"generate_reply",no_provider)
+    for message in ("where can I submit my request", "How do I send a project request?", "where is the consultation form?"):
+        result=client.post("/api/chat",json={"message":message,"history":[]})
+        assert result.status_code==200, result.text
+        assert result.json()["mode"]=="handoff"
+        assert "/vision" in result.json()["reply"]
+        assert "submit" in result.json()["reply"].lower()
+    assert 'assistant-project-link' in client.get("/site.js").text
+    assert 'formLink.href=\'/vision\'' in client.get("/site.js").text
+
+def test_email_in_chat_does_not_get_misidentified_or_claim_submission(monkeypatch):
+    monkeypatch.setattr(app,"GEMINI_API_KEY","")
+    result=client.post("/api/chat",json={
+        "message":"my email is collinsthuo254@gmail.com",
+        "history":[{"role":"user","content":"I want a dashboard for my hotel"}]})
+    assert result.status_code==200
+    assert result.json()["mode"]=="handoff"
+    answer=result.json()["reply"]
+    assert "/vision" in answer
+    assert "has not submitted" in answer
+    assert "Collinsthuo254" not in answer
+    assert "collinsthuo254@gmail.com" not in answer
+
+def test_catalog_includes_concise_link_and_no_implied_submission():
+    catalog=app.CATALOG.lower()
+    assert "not submitted" in catalog or "never claim to have officially submitted" in catalog
+    assert "/vision" in catalog
+    assert "do not infer a person's name from their email address" in catalog
