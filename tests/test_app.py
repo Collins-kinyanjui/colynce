@@ -180,6 +180,7 @@ def test_catalog_includes_concise_link_and_no_implied_submission():
 
 def test_chatbot_vision_form_and_dashboard_integration(monkeypatch):
     """The chat intake uses the same persisted lead endpoint as the standalone form."""
+    app.limits.clear()  # Each integration scenario should have an independent rate-limit window.
     script=client.get("/site.js").text
     for snippet in ("assistantVisionForm","Submit your vision in chat","name=\"name\"",
                     "name=\"business\"","name=\"email\"","name=\"interest\"",
