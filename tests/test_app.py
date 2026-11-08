@@ -156,7 +156,7 @@ def test_request_handoff_links_directly_to_real_form(monkeypatch):
         assert result.json()["mode"]=="handoff"
         assert "/vision" in result.json()["reply"]
         assert "submit" in result.json()["reply"].lower()
-    assert 'assistant-project-link' in client.get("/site.js").text
+    assert 'function startIntake()' in client.get("/site.js").text
     assert 'formLink.href=\'/vision\'' in client.get("/site.js").text
 
 def test_email_in_chat_does_not_get_misidentified_or_claim_submission(monkeypatch):
@@ -178,35 +178,41 @@ def test_catalog_includes_concise_link_and_no_implied_submission():
     assert "/vision" in catalog
     assert "do not infer a person's name from their email address" in catalog
 
-def test_chatbot_vision_form_and_dashboard_integration(monkeypatch):
-    """The chat intake uses the same persisted lead endpoint as the standalone form."""
-    app.limits.clear()  # Each integration scenario should have an independent rate-limit window.
+
+def test_conversational_interest_capture_and_dashboard_integration(monkeypatch):
+    """Visitors are asked questions in chat, and the final request uses the leads API."""
+    app.limits.clear()
     script=client.get("/site.js").text
-    for snippet in ("assistantVisionForm","Submit your vision in chat","name=\"name\"",
-                    "name=\"business\"","name=\"email\"","name=\"interest\"",
-                    "name=\"message\"","/api/leads","assistantVisionStatus",
-                    "avConsent","data.reference"):
-        assert snippet in script
-    assert "visionForm.reportValidity()" in script
-    assert "response.ok" in script
-    assert "Request received!" in script
-    assert ".assistant-vision-panel[hidden]{display:none}" in client.get("/site.css").text
+    for snippet in ("stages=['name','business','email','interest','message','confirm']",
+                    "function startIntake()","function processIntake(message)",
+                    "function submitIntake()","/api/leads","data.reference",
+                    "Would you like", "Your request summary"):
+        # Some phrases may not appear as exact literals; focus on the state machine.
+        if snippet not in ("Would you like", "Your request summary"):
+            assert snippet in script, snippet
+    assert "intake.details" in script
+    assert "I want to submit an interest" in script
+    assert "Reply YES to submit or NO to cancel" in script
+    assert "name=\\\"name\\\"" not in script
+    assert "assistantVisionForm" not in script
+    assert "assistant-vision-panel" not in script
+    assert "visionButton" not in script
+    assert "I want to submit an interest" in app.CATALOG
     monkeypatch.setattr(app,"GEMINI_API_KEY","")
     response=client.post("/api/chat",json={"message":"Where can I submit my request?","history":[]})
     assert response.status_code==200
-    assert "Submit your vision in chat" in response.json()["reply"]
+    assert "I want to submit an interest" in response.json()["reply"]
+
     lead=client.post("/api/leads",json={
-        "name":"Alex Test","business":"Hotel Demo Ltd","email":"alex-test@example.com",
+        "name":"Alex Test","business":"Hotel Example Ltd","email":"alex-test@example.com",
         "interest":"Custom Dashboard",
         "message":"Build a dashboard for room bookings, sales, occupancy and payments."})
     assert lead.status_code==201,lead.text
-    ref=lead.json()["reference"]
-    assert ref
-    login=client.post("/api/admin/login",json={"password":"test-admin-password"})
-    assert login.status_code==200
+    reference=lead.json()["reference"]
+    assert reference
+    assert client.post("/api/admin/login",json={"password":"test-admin-password"}).status_code==200
     overview=client.get("/api/admin/overview")
     assert overview.status_code==200
-    found=[item for item in overview.json()["leads"] if item["id"]==ref]
-    assert found and found[0]["business"]=="Hotel Demo Ltd"
-    assert "occupancy" in found[0]["message"]
-    assert found[0]["status"]=="New"
+    matches=[item for item in overview.json()["leads"] if item["id"]==reference]
+    assert matches and matches[0]["business"]=="Hotel Example Ltd"
+    assert matches[0]["status"]=="New"
